@@ -244,6 +244,12 @@
       transform: translateY(-1px);
     }
 
+    .btn:disabled {
+      cursor: wait;
+      opacity: 0.72;
+      transform: none;
+    }
+
     .btn-primary {
       color: var(--white);
       background: linear-gradient(135deg, var(--blue), var(--teal));
@@ -971,6 +977,23 @@
       font-weight: 700;
     }
 
+
+    .form-status {
+      min-height: 18px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+      line-height: 1.35;
+    }
+
+    .form-status.is-success {
+      color: #047857;
+    }
+
+    .form-status.is-error {
+      color: #b91c1c;
+    }
 
     .request-modal {
       position: fixed;
@@ -2259,8 +2282,12 @@
         </div>
 
         <div class="contact-layout">
-          <form class="contact-card" action="#contact" method="post" novalidate>
-            <div class="form-grid">
+          <form class="contact-card" action="https://formsubmit.co/ajax/it@PlaidItServices.com" method="POST" novalidate>
+            <input type="hidden" name="_subject" value="New IT support request from PlaidItServices.com" />
+            <input type="hidden" name="_template" value="table" />
+            <input type="hidden" name="_captcha" value="false" />
+            <input type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;pointer-events:none;" />
+<div class="form-grid">
               <label>
                 Name
                 <input type="text" name="name" autocomplete="name" maxlength="80" required />
@@ -2304,6 +2331,7 @@
               </label>
             </div>
             <button class="btn btn-primary" type="submit">Send Request</button>
+            <p class="form-status" aria-live="polite"></p>
           </form>
 
           <aside class="contact-info contact-info-compact" aria-label="Contact information">
@@ -2346,7 +2374,7 @@
       <div class="request-modal-icon" aria-hidden="true">✓</div>
       <h3 id="request-modal-title">Request received</h3>
       <p>
-        Thank you for contacting Plaid IT Services. Your request has been prepared on this page. We will respond based on availability and the details provided.
+        Thank you for contacting Plaid IT Services. Your request was submitted. We will respond based on availability and the details provided.
       </p>
       <div class="request-modal-actions">
         <button class="btn btn-primary request-modal-ok" type="button">OK</button>
@@ -2411,6 +2439,8 @@
     const phoneInput = contactForm.querySelector('input[name="phone"]');
     const companyInput = contactForm.querySelector('input[name="company"]');
     const messageInput = contactForm.querySelector('textarea[name="message"]');
+    const submitButton = contactForm.querySelector('button[type="submit"]');
+    const formStatus = contactForm.querySelector(".form-status");
 
     const nameError = document.querySelector("#name-error");
     const emailError = document.querySelector("#email-error");
@@ -2590,7 +2620,7 @@
       document.body.style.overflow = "";
     };
 
-    contactForm.addEventListener("submit", (event) => {
+    contactForm.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       nameInput.value = nameInput.value.trim();
@@ -2611,15 +2641,48 @@
         return;
       }
 
-      openRequestModal();
-      contactForm.reset();
+      submitButton.disabled = true;
+      submitButton.textContent = "Sending...";
 
-      [
-        [nameInput, nameError],
-        [emailInput, emailError],
-        [phoneInput, phoneError],
-        [messageInput, messageError]
-      ].forEach(([input, error]) => clearFieldError(input, error));
+      if (formStatus) {
+        formStatus.classList.remove("is-success", "is-error");
+        formStatus.textContent = "Sending your request...";
+      }
+
+      try {
+        const response = await fetch(contactForm.action, {
+          method: "POST",
+          body: new FormData(contactForm),
+          headers: { Accept: "application/json" }
+        });
+
+        if (!response.ok) {
+          throw new Error("Request was not accepted.");
+        }
+
+        openRequestModal();
+        contactForm.reset();
+
+        [
+          [nameInput, nameError],
+          [emailInput, emailError],
+          [phoneInput, phoneError],
+          [messageInput, messageError]
+        ].forEach(([input, error]) => clearFieldError(input, error));
+
+        if (formStatus) {
+          formStatus.classList.add("is-success");
+          formStatus.textContent = "Request sent. If this is the first submission, check the business email inbox for FormSubmit activation.";
+        }
+      } catch (error) {
+        if (formStatus) {
+          formStatus.classList.add("is-error");
+          formStatus.textContent = "The request could not be sent. Please call 323-601-5558 or email it@PlaidItServices.com.";
+        }
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Send Request";
+      }
     });
 
     modalCloseButtons.forEach((button) => {
